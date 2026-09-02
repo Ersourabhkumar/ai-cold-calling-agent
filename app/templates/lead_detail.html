@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Lead #{{ lead.id }}{% endblock %}
+{% block page_title %}{{ lead.name }}{% endblock %}
+{% block page_sub %}Lead detail & history{% endblock %}
+{% block content %}
+<div class="panel" style="padding:18px">
+  <div class="kv">
+    <b>Phone</b><span class="mono">{{ lead.phone_masked }}</span>
+    <b>Status</b><span>
+      {% set s = (lead.status or 'new').lower() %}
+      <span class="badge {% if s == 'qualified' %}b-green{% elif s in ('interested','appointment_booked') %}b-cyan{% elif s in ('new','connected','calling') %}b-accent{% elif s in ('failed','do_not_call') %}b-red{% else %}b-muted{% endif %}">{{ (lead.status or 'new').replace('_',' ') }}</span>
+    </span>
+    <b>City</b><span>{{ lead.city or '—' }}</span>
+    <b>Requirement</b><span>{{ lead.requirement or '—' }}</span>
+    <b>Budget</b><span>{{ lead.budget or '—' }}</span>
+    <b>Timeline</b><span>{{ lead.timeline or '—' }}</span>
+    <b>Source</b><span>{{ lead.source or '—' }}</span>
+    <b>Score</b><span>{{ lead.lead_score or 0 }}/100</span>
+    <b>Created</b><span>{{ lead.created_at }}</span>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <div class="head"><h2>Calls ({{ calls|length }})</h2></div>
+    {% for c in calls %}
+    <div style="padding:14px 18px;border-bottom:1px solid #16203a">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b>Call #{{ c.id }}</b>
+        <span class="badge b-accent">{{ (c.status or '—').replace('_',' ') }}</span>
+      </div>
+      <div class="small muted" style="margin-top:6px">
+        {% if c.outcome %}<span style="color:var(--green)">Outcome: {{ c.outcome.replace('_',' ') }}</span> · {% endif %}        {% if c.duration_seconds %}Duration: {{ c.duration_seconds//60 }}m {{ c.duration_seconds%60 }}s · {% endif %}
+        {{ c.created_at }}
+      </div>
+      {% if c.transcript %}
+      <details style="margin-top:8px">
+        <summary class="link small" style="cursor:pointer">View transcript</summary>
+        <pre class="transcript" style="margin-top:8px">{{ c.transcript }}</pre>
+      </details>
+      {% endif %}
+      {% if c.summary %}
+      <details style="margin-top:6px" {% if c.outcome %}open{% endif %}>
+        <summary class="link small" style="cursor:pointer">Qualification</summary>
+        <div class="small" style="margin-top:8px">
+          {% set q = c.summary.qualification %}
+          {% if q %}
+          <div class="kv">
+            {% if q.property_type %}<b>Property</b><span>{{ q.property_type }} {{ q.bhk or '' }}</span>{% endif %}
+            {% if q.location %}<b>Location</b><span>{{ q.location }}</span>{% endif %}
+            {% if q.budget %}<b>Budget</b><span>₹{{ q.budget }}</span>{% endif %}
+            {% if q.timeline %}<b>Timeline</b><span>{{ q.timeline }}</span>{% endif %}
+            {% if q.purpose %}<b>Purpose</b><span>{{ q.purpose }}</span>{% endif %}
+            {% if q.interested is defined %}<b>Interested</b><span>{{ 'Yes' if q.interested else 'No' }}</span>{% endif %}
+            {% if q.appointment_requested is defined %}<b>Appointment</b><span>{{ 'Requested' if q.appointment_requested else 'Not requested' }}</span>{% endif %}
+          </div>
+          {% else %}No structured qualification{% endif %}
+        </div>
+      </details>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="empty">No calls for this lead</div>
+    {% endfor %}
+  </div>
+
+  <div class="panel">
+    <div class="head"><h2>Follow-ups ({{ followups|length }})</h2></div>
+    {% for f in followups %}
+    <div style="padding:14px 18px;border-bottom:1px solid #16203a">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b>Scheduled: {{ f.scheduled_at }}</b>
+        <span class="badge {% set fs=(f.status or 'unknown').lower() %}{% if fs == 'pending' %}b-amber{% elif fs == 'done' %}b-green{% else %}b-red{% endif %}">{{ (f.status or '—').replace('_',' ') }}</span>
+      </div>
+      {% if f.reason %}<div class="small muted" style="margin-top:5px">{{ f.reason }}</div>{% endif %}
+      {% if f.notes %}<div class="small" style="margin-top:5px">{{ f.notes[:200] }}</div>{% endif %}
+    </div>
+    {% else %}
+    <div class="empty">No follow-ups for this lead</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

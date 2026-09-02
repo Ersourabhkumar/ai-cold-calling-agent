@@ -1,0 +1,2 @@
+{%- set s = (c.status or 'unknown').lower() -%}
+<span class="badge {% if s in ('completed','queued','initiated','in_progress','ringing','answered') %}b-accent{% elif s in ('no_answer','busy','failed','cancelled','canceled') %}b-red{% else %}b-muted{% endif %}">{{ (c.status or '—').replace('_',' ') }}</span>

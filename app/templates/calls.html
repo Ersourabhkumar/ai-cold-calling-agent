@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Calls{% endblock %}
+{% block page_title %}Calls{% endblock %}
+{% block page_sub %}All outbound calls and their lifecycle{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="head"><h2>All Calls ({{ calls|length }})</h2></div>
+  <table>
+    <tr><th>#</th><th>Lead</th><th>Phone</th><th>Status</th><th>Outcome</th><th>Duration</th><th>Provider</th><th>When</th></tr>
+    {% for c in calls %}
+    <tr>
+      <td class="mono">{{ c.id }}</td>
+      <td>{{ c.lead_name }}</td>
+      <td class="mono">{{ c.phone_masked }}</td>
+      <td>
+        {% set s = (c.status or 'unknown').lower() %}
+        <span class="badge {% if s in ('completed','initiated','in_progress','ringing','answered','queued') %}b-accent{% elif s in ('no_answer','failed') %}b-red{% else %}b-muted{% endif %}">{{ (c.status or '—').replace('_',' ') }}</span>
+      </td>
+      <td class="small">
+        {% if c.outcome %}
+          <span class="badge {% if c.outcome.lower() in ('appointment_booked','qualified','interested') %}b-green{% elif c.outcome.lower() == 'callback' %}b-amber{% else %}b-red{% endif %}">{{ c.outcome.replace('_',' ') }}</span>
+        {% else %}—{% endif %}
+      </td>
+      <td class="small">{% if c.duration_seconds %}{{ c.duration_seconds//60 }}m {{ c.duration_seconds%60 }}s{% else %}—{% endif %}</td>
+      <td class="small">{{ c.provider or '—' }}</td>
+      <td class="small muted">{{ c.created_at }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="empty">No calls yet — fire a live call from the left menu.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

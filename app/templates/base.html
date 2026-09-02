@@ -1,0 +1,153 @@
+{% set active = active|default('dashboard') -%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}AI Cold Calling{% endblock %} · Dashboard</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --panel: #121a2b;
+    --panel2: #0e1626;
+    --border: #1f2b41;
+    --text: #e6edf7;
+    --muted: #8ea0bd;
+    --accent: #4f8cff;
+    --accent2: #2dd4bf;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --violet: #a78bfa;
+    --radius: 14px;
+    --shadow: 0 8px 30px rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #14203a 0%, var(--bg) 55%);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+  }
+  /* Sidebar */
+  aside {
+    width: 230px; flex-shrink: 0;
+    background: var(--panel2);
+    border-right: 1px solid var(--border);
+    padding: 22px 14px;
+    position: sticky; top: 0; height: 100vh;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  aside .brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 8px 18px; font-weight: 700; font-size: 17px; letter-spacing:.3px;
+  }
+  aside .brand .dot {
+    width: 32px; height: 32px; border-radius: 9px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: grid; place-items: center; font-size: 15px;
+  }
+  aside a {
+    color: var(--muted); text-decoration: none;
+    padding: 10px 12px; border-radius: 10px; font-size: 14px;
+    display: flex; align-items: center; gap: 10px; transition: .15s;
+  }
+  aside a:hover { background: var(--border); color: var(--text); }
+  aside a.active { background: linear-gradient(135deg,#1c2c4a,#14203a); color: var(--text); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
+  aside .spacer { flex: 1; }
+  aside a.danger { color: var(--red); }
+  /* Main */
+  main { flex: 1; padding: 26px 30px; overflow-y: auto; }
+  header.topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom: 22px; }
+  header.topbar h1 { font-size: 22px; }
+  header.topbar .sub { color: var(--muted); font-size: 13px; margin-top:3px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap: 14px; margin-bottom: 24px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px 18px; box-shadow: var(--shadow);
+  }
+  .card .num { font-size: 28px; font-weight: 700; }
+  .card .lbl { color: var(--muted); font-size: 13px; margin-top:3px; }
+  .card .num.green{color:var(--green)} .card .num.amber{color:var(--amber)} .card .num.red{color:var(--red)} .card .num.accent{color:var(--accent)} .card .num.violet{color:var(--violet)}
+  .panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow: hidden; margin-bottom: 22px;
+  }
+  .panel .head { display:flex; justify-content:space-between; align-items:center; padding: 14px 18px; border-bottom:1px solid var(--border); }
+  .panel .head h2 { font-size: 15px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align:left; color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing:.4px; padding: 10px 18px; border-bottom:1px solid var(--border); }
+  td { padding: 12px 18px; border-bottom: 1px solid #16203a; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #141e33; }
+  .badge { display:inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight:600; }
+  .b-green{background:#0f2e24;color:var(--green)} .b-amber{background:#33270e;color:var(--amber)}
+  .b-red{background:#331515;color:var(--red)} .b-accent{background:#12233f;color:var(--accent)}
+  .b-violet{background:#271a3d;color:var(--violet)} .b-muted{background:#1c2640;color:var(--muted)} .b-cyan{background:#0f2f33;color:var(--accent2)}
+  .muted{color:var(--muted)} .small{font-size:12.5px}
+  .mono{font-family:Consolas,monospace;font-size:12.5px}
+  /* Buttons & forms */
+  .btn {
+    background: linear-gradient(135deg, var(--accent), #3a6fd8); border:none; color:#fff;
+    padding: 9px 16px; border-radius: 10px; font-size: 13.5px; font-weight:600; cursor:pointer; text-decoration:none; display:inline-block;
+    transition:.15s;
+  }
+  .btn:hover{filter:brightness(1.08)} .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)} .btn.danger{background:linear-gradient(135deg,#e5484d,#b33a3e)}
+  .btn.green{background:linear-gradient(135deg,#10b981,#0d9488)} .btn:disabled{opacity:.5;cursor:not-allowed}
+  form.inline-form{display:inline}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+  .field label{font-size:13px;color:var(--muted)}
+  .field input,.field select,.field textarea{
+    background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    border-radius:10px;padding:10px 12px;font-size:14px;outline:none;
+  }
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
+  .field textarea{resize:vertical;min-height:70px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  @media(max-width:820px){aside{width:70px} aside span.t{display:none} .grid2,.grid3{grid-template-columns:1fr}}
+  .form-wrap{max-width:640px}
+  .kv{display:grid;grid-template-columns:170px 1fr;gap:8px 16px;font-size:13.5px}
+  .kv b{color:var(--muted);font-weight:500}
+  .toast{position:fixed;bottom:22px;right:22px;padding:12px 18px;border-radius:10px;background:var(--panel2);border:1px solid var(--border);box-shadow:var(--shadow);z-index:99;opacity:0;transform:translateY(10px);transition:.25s}
+  .toast.show{opacity:1;transform:none}
+  .toast.ok{border-color:var(--green)} .toast.err{border-color:var(--red)}
+  pre.transcript{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;white-space:pre-wrap;line-height:1.6;max-height:340px;overflow:auto}
+  a.link{color:var(--accent);text-decoration:none} a.link:hover{text-decoration:underline}
+  .empty{color:var(--muted);text-align:center;padding:30px;font-size:13.5px}
+</style>
+</head>
+<body>
+<aside>
+  <div class="brand"><span class="dot">📞</span> <span class="t">Cold Calling</span></div>
+  <a href="/ui" class="{{ 'active' if active=='dashboard' else '' }}">📊 <span class="t">Dashboard</span></a>
+  <a href="/ui/leads" class="{{ 'active' if active=='leads' else '' }}">👥 <span class="t">Leads / CRM</span></a>
+  <a href="/ui/calls" class="{{ 'active' if active=='calls' else '' }}">📞 <span class="t">Calls</span></a>
+  <a href="/ui/followups" class="{{ 'active' if active=='followups' else '' }}">📅 <span class="t">Follow-ups</span></a>
+  <a href="/ui/new-call" class="{{ 'active' if active=='newcall' else '' }}">🚀 <span class="t">Fire Live Call</span></a>
+  <div class="spacer"></div>
+  <a href="/docs" target="_blank" class="">🧪 <span class="t">API Docs</span></a>
+  <a href="/health" target="_blank" class="">💚 <span class="t">Health</span></a>
+</aside>
+<main>
+  <header class="topbar">
+    <div>
+      <h1>{% block page_title %}{% endblock %}</h1>
+      <div class="sub">{% block page_sub %}{% endblock %}</div>
+    </div>
+    <div>{% block top_actions %}{% endblock %}</div>
+  </header>
+  {% block content %}{% endblock %}
+</main>
+<div id="toast" class="toast"></div>
+<script>
+function toast(msg, ok=true){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show '+(ok?'ok':'err');
+  setTimeout(()=>t.classList.remove('show'), 3200);
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

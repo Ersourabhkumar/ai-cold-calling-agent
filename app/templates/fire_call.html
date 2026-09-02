@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Fire Live Call{% endblock %}
+{% block page_title %}Fire a Live Call 🚀{% endblock %}
+{% block page_sub %}Create a lead + campaign and dispatch one real outbound call (Tabbly){% endblock %}
+{% block content %}
+<div class="form-wrap">
+  <div class="panel" style="padding:22px">
+    <form id="fireForm">
+      <div class="grid2">
+        <div class="field"><label>Phone * (+91...)</label><input name="phone" required placeholder="+917665035514"></div>
+        <div class="field"><label>Lead Name *</label><input name="lead_name" required placeholder="Demo Customer"></div>
+        <div class="field"><label>City</label><input name="city" placeholder="Jaipur"></div>
+        <div class="field"><label>Requirement</label><input name="requirement" placeholder="3 BHK villa"></div>
+        <div class="field"><label>Budget</label><input name="budget" placeholder="1.2 crore / 75 lakh"></div>
+        <div class="field"><label>Timeline</label><input name="timeline" placeholder="2-4 months"></div>
+      </div>
+      <div class="field"><label>Campaign Name * (unique)</label><input name="campaign_name" required placeholder="Demo GO"></div>
+      <button type="submit" class="btn" id="fireBtn">📞 Fire Live Call</button>
+      <span class="small muted" style="margin-left:10px">Call dials in ~5 min — keep the phone ready.</span>
+    </form>
+  </div>
+
+  <div id="result" class="panel hidden" style="padding:20px"></div>
+
+  <div class="panel" style="padding:18px">
+    <div class="head" style="padding:0 0 10px;border:none"><h2>Check an existing call</h2></div>
+    <form id="checkForm" style="display:flex;gap:10px;align-items:end">
+      <div class="field" style="flex:1;margin:0"><label>Call ID</label><input name="call_id" placeholder="16"></div>
+      <button type="submit" class="btn ghost">Refresh Status</button>
+    </form>
+    <div id="checkResult" class="hidden" style="margin-top:16px"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<style>.hidden{display:none}</style>
+<script>
+async function post(url,data){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data||{})});
+  const j=await r.json(); if(!r.ok) throw new Error(j.detail&&j.detail.message||j.detail||'Error'); return j;
+}
+document.getElementById('fireForm').addEventListener('submit', async (e)=>{
+  e.preventDefault(); const btn=document.getElementById('fireBtn');
+  const data=Object.fromEntries(new FormData(e.target));
+  btn.disabled=true; btn.textContent='Dispatching...';
+  const box=document.getElementById('result'); box.classList.remove('hidden');
+  try{
+    const j=await post('/ui/api/test-call', data);
+    box.innerHTML='<h2 style="color:var(--green);margin-bottom:10px">✅ Call dispatched!</h2>'+
+      '<div class="kv"><b>Call ID</b><span class="mono">'+j.call.id+'</span><b>Status</b><span>'+j.call.status+'</span><b>Provider</b><span>'+j.call.provider+'</span><b>Provider Call ID</b><span class="mono">'+j.call.provider_call_id+'</span><b>Lead</b><span>'+j.lead.name+' (#'+j.lead.id+')</span><b>Destination</b><span class="mono">'+j.call.phone_masked+'</span></div>'+
+      '<p class="small muted" style="margin-top:12px">📱 Keep the phone ready — the AI will call in ~5 minutes. Then use the "Refresh Status" below to watch it.</p>';
+    const id=j.call.id; document.querySelector('#checkForm input[name="call_id"]').value=id;
+    toast('Live call #'+id+' dispatched');
+  }catch(err){ box.innerHTML='<h2 style="color:var(--red)">❌ '+err.message+'</h2>'; toast(err.message,false); }
+  btn.disabled=false; btn.textContent='📞 Fire Live Call';
+});
+document.getElementById('checkForm').addEventListener('submit', async (e)=>{
+  e.preventDefault(); const call_id=new FormData(e.target).get('call_id');
+  const box=document.getElementById('checkResult'); box.classList.remove('hidden');
+  try{
+    const j=await post('/ui/api/test-call/status?call_id='+call_id, {});
+    const c=j.call||{}; const q=j.qualification||{};
+    let qhtml='<p class="small muted">No structured qualification yet (call not completed).</p>';
+    if(j.qualification && Object.keys(j.qualification).length){
+      qhtml='<div class="kv">'+
+        (q.property_type?'<b>Property</b><span>'+q.property_type+' '+(q.bhk||'')+'</span>':'')+
+        (q.location?'<b>Location</b><span>'+q.location+'</span>':'')+
+        (q.budget?'<b>Budget</b><span>₹'+q.budget+'</span>':'')+
+        (q.timeline?'<b>Timeline</b><span>'+q.timeline+'</span>':'')+
+        (q.purpose?'<b>Purpose</b><span>'+q.purpose+'</span>':'')+
+        (q.interested!==undefined?'<b>Interested</b><span>'+q.interested+'</span>':'')+
+        (q.appointment_requested!==undefined?'<b>Appointment</b><span>'+q.appointment_requested+'</span>':'')+
+        '<b>Qualification</b><span><span class="badge b-green">'+q.qualification_status+'</span></span></div>';
+    }
+    box.innerHTML='<h2 style="margin-bottom:12px">Call #'+call_id+'</h2>'+
+      '<div class="kv"><b>Status</b><span>'+c.status+'</span><b>Outcome</b><span>'+c.outcome||'—'+'</span><b>Duration</b><span>'+c.duration_seconds+'s</span><b>Transcript</b><span>'+(c.transcript_available?'Yes':'No')+'</span></div>'+
+      '<h3 class="small" style="margin:14px 0 8px">Qualification</h3>'+qhtml;
+  }catch(err){ box.innerHTML='<h2 style="color:var(--red)">❌ '+err.message+'</h2>'; }
+});
+</script>
+{% endblock %}

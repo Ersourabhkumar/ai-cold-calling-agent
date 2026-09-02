@@ -1,0 +1,27 @@
+import os
+
+
+MAX_CALL_ATTEMPTS = int(
+    os.getenv("MAX_CALL_ATTEMPTS", "3")
+)
+
+RETRY_DELAY_MINUTES = int(
+    os.getenv("RETRY_DELAY_MINUTES", "30")
+)
+
+CALLBACK_DELAY_MINUTES = int(
+    os.getenv("CALLBACK_DELAY_MINUTES", "1440")
+)
+
+RETRYABLE_OUTCOMES = {
+    "NO_RESPONSE",
+    "NO_ANSWER",
+    "BUSY",
+}
+
+STOP_OUTCOMES = {
+    "INTERESTED",
+    "NOT_INTERESTED",
+    "APPOINTMENT_BOOKED",
+    "DO_NOT_CALL",
+}

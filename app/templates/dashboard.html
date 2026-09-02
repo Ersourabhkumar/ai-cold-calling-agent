@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_sub %}Overview of your calling operation{% endblock %}
+{% block content %}
+<div class="cards">
+  <div class="card"><div class="num accent">{{ stats.leads }}</div><div class="lbl">Total Leads</div></div>
+  <div class="card"><div class="num green">{{ stats.qualified }}</div><div class="lbl">Qualified</div></div>
+  <div class="card"><div class="num violet">{{ stats.calls }}</div><div class="lbl">Total Calls</div></div>
+  <div class="card"><div class="num amber">{{ stats.answered }}</div><div class="lbl">Answered</div></div>
+  <div class="card"><div class="num red">{{ stats.pending_followups }}</div><div class="lbl">Pending Follow-ups</div></div>
+  <div class="card"><div class="num">{{ stats.campaigns }}</div><div class="lbl">Campaigns</div></div>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <div class="head"><h2>Recent Calls</h2><a class="link small" href="/ui/calls">View all →</a></div>
+    <table>
+      <tr><th>#</th><th>Lead</th><th>Status</th><th>Outcome</th><th>Dur</th></tr>
+      {% for c in recent_calls %}
+      <tr>
+        <td class="mono">{{ c.id }}</td>
+        <td>{{ c.lead_name }}</td>
+        <td>{% include "_status.html" %}</td>
+        <td class="small">{{ c.outcome or '—' }}</td>
+        <td class="small">{{ (c.duration_seconds // 60) }}m {{ c.duration_seconds % 60 }}s</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="empty">No calls yet</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div class="panel">
+    <div class="head"><h2>Recent Leads</h2><a class="link small" href="/ui/leads">CRM →</a></div>
+    <table>
+      <tr><th>Name</th><th>Phone</th><th>Status</th><th>Requirement</th></tr>
+      {% for l in recent_leads %}
+      <tr>
+        <td>{{ l.name }}</td>
+        <td class="mono">{{ l.phone_masked }}</td>
+        <td>
+          {% set s = (l.status or 'new').lower() %}
+          <span class="badge {% if s == 'qualified' %}b-green{% elif s in ('interested','appointment_booked') %}b-cyan{% elif s in ('new','connected','calling') %}b-accent{% elif s in ('failed','do_not_call') %}b-red{% else %}b-muted{% endif %}">{{ (l.status or 'new').replace('_',' ') }}</span>
+        </td>
+        <td class="small">{{ l.requirement or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="empty">No leads yet</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

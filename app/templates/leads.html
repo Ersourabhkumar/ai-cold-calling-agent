@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Leads / CRM{% endblock %}
+{% block page_title %}Leads & CRM{% endblock %}
+{% block page_sub %}Manage your prospects and their qualification status{% endblock %}
+{% block top_actions %}
+<button class="btn" onclick="document.getElementById('addForm').classList.toggle('hidden')">+ Add Lead</button>
+{% endblock %}
+{% block content %}
+<style>.hidden{display:none}</style>
+<div id="addForm" class="hidden form-wrap panel" style="padding:20px">
+  <h2 style="margin-bottom:14px">Add a Lead (CRM)</h2>
+  <form id="newLeadForm">
+    <div class="grid2">
+      <div class="field"><label>Name *</label><input name="name" required placeholder="Customer name"></div>
+      <div class="field"><label>Phone * (with +91)</label><input name="phone" required placeholder="+919876543210"></div>
+      <div class="field"><label>City</label><input name="city" placeholder="Jaipur"></div>
+      <div class="field"><label>Email</label><input name="email" placeholder="a@b.com"></div>
+      <div class="field"><label>Requirement</label><input name="requirement" placeholder="3 BHK flat"></div>
+      <div class="field"><label>Budget</label><input name="budget" placeholder="75 lakh / 1 crore..."></div>
+      <div class="field"><label>Timeline</label><input name="timeline" placeholder="1-3 months"></div>
+      <div class="field"><label>Source</label><input name="source" placeholder="website / referral"></div>
+    </div>
+    <button type="submit" class="btn green">Save Lead</button>
+  </form>
+</div>
+
+<div class="panel">
+  <div class="head"><h2>All Leads ({{ leads|length }})</h2><span class="small muted">Click a row to view details</span></div>
+  <table>
+    <tr><th>#</th><th>Name</th><th>Phone</th><th>City</th><th>Status</th><th>Requirement</th><th>Budget</th><th>Timeline</th><th>Score</th></tr>
+    {% for l in leads %}
+    <tr style="cursor:pointer" onclick="location.href='/ui/leads/{{ l.id }}'">
+      <td class="mono">{{ l.id }}</td>
+      <td><b>{{ l.name }}</b></td>
+      <td class="mono">{{ l.phone_masked }}</td>
+      <td class="small">{{ l.city or '—' }}</td>
+      <td>
+        {% set s = (l.status or 'new').lower() %}
+        <span class="badge {% if s == 'qualified' %}b-green{% elif s in ('interested','appointment_booked') %}b-cyan{% elif s in ('new','connected','calling') %}b-accent{% elif s in ('failed','do_not_call') %}b-red{% else %}b-muted{% endif %}">{{ (l.status or 'new').replace('_',' ') }}</span>
+      </td>
+      <td class="small">{{ l.requirement or '—' }}</td>
+      <td class="small">{{ l.budget or '—' }}</td>
+      <td class="small">{{ l.timeline or '—' }}</td>
+      <td class="small">{{ l.lead_score or 0 }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="9" class="empty">No leads yet. Add your first lead above.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('newLeadForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const f=e.target; const data=Object.fromEntries(new FormData(f));
+  try{
+    const r=await fetch('/ui/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const j=await r.json();
+    if(!r.ok) throw new Error(j.detail||'Error');
+    toast('Lead created ✓'); location.reload();
+  }catch(err){ toast(err.message,false); }
+});
+</script>
+{% endblock %}
