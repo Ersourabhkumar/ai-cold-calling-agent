@@ -65,6 +65,7 @@ document.getElementById('checkForm').addEventListener('submit', async (e)=>{
         (q.budget?'<b>Budget</b><span>₹'+q.budget+'</span>':'')+
         (q.timeline?'<b>Timeline</b><span>'+q.timeline+'</span>':'')+
         (q.purpose?'<b>Purpose</b><span>'+q.purpose+'</span>':'')+
+        ((q.appointment_day||q.appointment_time)?'<b>Site Visit</b><span>'+(q.appointment_day||'')+' '+(q.appointment_time||'')+'</span>':'')+
         (q.interested!==undefined?'<b>Interested</b><span>'+q.interested+'</span>':'')+
         (q.appointment_requested!==undefined?'<b>Appointment</b><span>'+q.appointment_requested+'</span>':'')+
         '<b>Qualification</b><span><span class="badge b-green">'+q.qualification_status+'</span></span></div>';

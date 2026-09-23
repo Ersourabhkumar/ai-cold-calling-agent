@@ -56,6 +56,37 @@ def _serialize_lead(l: Lead) -> dict:
     }
 
 
+def _gist_with_slot(c: Call) -> str | None:
+    base = None
+    qualification: dict = {}
+    if c.summary is not None:
+        base = c.summary.requirements or None
+        qualification = c.summary.qualification or {}
+    day = str(qualification.get("appointment_day") or "").strip()
+    time = str(qualification.get("appointment_time") or "").strip()
+    slot = " ".join(part for part in (day, time) if part)
+    if slot:
+        return f"{base} · Visit: {slot}" if base else f"Visit: {slot}"
+    return base
+
+
+def _call_flag(c: Call, key: str) -> bool:
+    if c.summary is None:
+        return False
+    return (c.summary.qualification or {}).get(key) is True
+
+
+def _interest_label(c: Call) -> str:
+    if c.summary is None:
+        return "unknown"
+    value = (c.summary.qualification or {}).get("interested")
+    if value is True:
+        return "yes"
+    if value is False:
+        return "no"
+    return "unknown"
+
+
 def _serialize_call(c: Call) -> dict:
     return {
         "id": c.id,
@@ -69,11 +100,16 @@ def _serialize_call(c: Call) -> dict:
         "created_at": c.created_at.strftime("%Y-%m-%d %H:%M"),
         "transcript": c.transcript,
         "summary": c.summary,
+        "interest": _interest_label(c),
+        "interest_level": (c.summary.interest_level if c.summary and c.summary.interest_level else None),
+        "gist": _gist_with_slot(c),
     }
 
 
 def _draw_summary_stats(db: Session, leads: list[Lead], calls: list[Call], followups: list[Followup], campaigns: list[Campaign]) -> dict:
     qualified = sum(1 for l in leads if l.status and l.status.name == "QUALIFIED")
+    interested_leads = {c.lead_id for c in calls if c.lead_id and _call_flag(c, "interested")}
+    site_visit_leads = {c.lead_id for c in calls if c.lead_id and _call_flag(c, "appointment_requested")}
     answered = sum(1 for c in calls if c.status and c.status.name in {"ANSWERED", "IN_PROGRESS", "COMPLETED"}
                    and c.duration_seconds)
     pending = sum(1 for f in followups if f.status and f.status.name == "PENDING")
@@ -84,6 +120,8 @@ def _draw_summary_stats(db: Session, leads: list[Lead], calls: list[Call], follo
         "answered": answered,
         "pending_followups": pending,
         "campaigns": len(campaigns),
+        "interested": len(interested_leads),
+        "site_visits": len(site_visit_leads),
     }
 
 

@@ -69,3 +69,17 @@ def test_ui_fire_call_endpoint(client):
     status = client.post(f"/ui/api/test-call/status?call_id={body['call']['id']}")
     assert status.status_code == 200
     assert status.json()["call"]["id"] == body["call"]["id"]
+
+
+def test_dashboard_shows_interest_overview(client):
+    r = client.get("/ui")
+    assert r.status_code == 200
+    assert "Interested" in r.text
+    assert "Site Visits" in r.text
+    assert "Baat kya hui" in r.text
+
+
+def test_calls_page_shows_interest_column(client):
+    r = client.get("/ui/calls")
+    assert r.status_code == 200
+    assert "Interest" in r.text

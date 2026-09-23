@@ -189,6 +189,31 @@ class TestApplySarvamEnrichment:
         assert lead.status == LeadStatus.CALLBACK
         assert call.summary.followup_at is not None
 
+    def test_appointment_slot_captured(self, db_session, completed_lead_and_call):
+        lead, call = completed_lead_and_call
+        agent_vars = {
+            "interested": True,
+            "appointment_requested": True,
+            "appointment_day": "Sunday",
+            "appointment_time": "4 PM",
+        }
+
+        result = apply_sarvam_enrichment(
+            db_session,
+            call,
+            final_agent_variables=agent_vars,
+            interaction_transcript=[],
+        )
+
+        assert result["enriched"] is True
+        assert result["outcome"] == "APPOINTMENT_BOOKED"
+        db_session.refresh(call)
+        assert call.summary is not None
+        assert call.summary.qualification.get("appointment_day") == "Sunday"
+        assert call.summary.qualification.get("appointment_time") == "4 PM"
+        db_session.refresh(lead)
+        assert lead.status == LeadStatus.APPOINTMENT_BOOKED
+
     def test_not_enriched_if_not_completed(self, db_session):
         lead = Lead(id=300, name="Test", phone="+911234567890", status=LeadStatus.CALLING)
         db_session.add(lead)

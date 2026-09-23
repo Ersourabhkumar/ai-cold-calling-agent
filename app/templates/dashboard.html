@@ -6,6 +6,8 @@
 <div class="cards">
   <div class="card"><div class="num accent">{{ stats.leads }}</div><div class="lbl">Total Leads</div></div>
   <div class="card"><div class="num green">{{ stats.qualified }}</div><div class="lbl">Qualified</div></div>
+  <div class="card"><div class="num green">{{ stats.interested }}</div><div class="lbl">Interested</div></div>
+  <div class="card"><div class="num violet">{{ stats.site_visits }}</div><div class="lbl">Site Visits</div></div>
   <div class="card"><div class="num violet">{{ stats.calls }}</div><div class="lbl">Total Calls</div></div>
   <div class="card"><div class="num amber">{{ stats.answered }}</div><div class="lbl">Answered</div></div>
   <div class="card"><div class="num red">{{ stats.pending_followups }}</div><div class="lbl">Pending Follow-ups</div></div>
@@ -16,17 +18,19 @@
   <div class="panel">
     <div class="head"><h2>Recent Calls</h2><a class="link small" href="/ui/calls">View all →</a></div>
     <table>
-      <tr><th>#</th><th>Lead</th><th>Status</th><th>Outcome</th><th>Dur</th></tr>
+      <tr><th>#</th><th>Lead</th><th>Status</th><th>Interest</th><th>Outcome</th><th>Baat kya hui</th><th>Dur</th></tr>
       {% for c in recent_calls %}
       <tr>
         <td class="mono">{{ c.id }}</td>
         <td>{{ c.lead_name }}</td>
         <td>{% include "_status.html" %}</td>
+        <td>{% if c.interest == 'yes' %}<span class="badge b-green">Haan</span>{% elif c.interest == 'no' %}<span class="badge b-red">Nahi</span>{% else %}<span class="badge b-muted">—</span>{% endif %}</td>
         <td class="small">{{ c.outcome or '—' }}</td>
+        <td class="small">{{ c.gist or '—' }}</td>
         <td class="small">{{ (c.duration_seconds // 60) }}m {{ c.duration_seconds % 60 }}s</td>
       </tr>
       {% else %}
-      <tr><td colspan="5" class="empty">No calls yet</td></tr>
+      <tr><td colspan="7" class="empty">No calls yet</td></tr>
       {% endfor %}
     </table>
   </div>

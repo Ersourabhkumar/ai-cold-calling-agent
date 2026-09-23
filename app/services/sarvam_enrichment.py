@@ -190,6 +190,7 @@ def apply_sarvam_enrichment(
         "property_type", "bhk", "location", "city",
         "budget", "budget_amount", "timeline", "purpose",
         "interested", "appointment_requested", "callback_requested",
+        "appointment_day", "appointment_time",
         "missing_info", "disposition", "call_step", "tenure",
         "qualification_status",
     ):

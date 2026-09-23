@@ -51,6 +51,7 @@
             {% if q.budget %}<b>Budget</b><span>₹{{ q.budget }}</span>{% endif %}
             {% if q.timeline %}<b>Timeline</b><span>{{ q.timeline }}</span>{% endif %}
             {% if q.purpose %}<b>Purpose</b><span>{{ q.purpose }}</span>{% endif %}
+            {% if q.appointment_day or q.appointment_time %}<b>Site Visit</b><span>{{ q.appointment_day or '' }} {{ q.appointment_time or '' }}</span>{% endif %}
             {% if q.interested is defined %}<b>Interested</b><span>{{ 'Yes' if q.interested else 'No' }}</span>{% endif %}
             {% if q.appointment_requested is defined %}<b>Appointment</b><span>{{ 'Requested' if q.appointment_requested else 'Not requested' }}</span>{% endif %}
           </div>
