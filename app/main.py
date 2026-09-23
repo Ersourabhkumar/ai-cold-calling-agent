@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import text
 
@@ -87,6 +88,36 @@ app.include_router(followups.router)
 app.include_router(webhooks_router)
 app.include_router(admin_router)
 app.include_router(ui_router)
+
+
+def custom_openapi():
+    """Expose the X-API-Key header in Swagger UI.
+
+    Runtime enforcement stays in ApiKeyMiddleware (app/core/security.py);
+    this only teaches the generated docs that /api/* calls need the
+    X-API-Key header, so Swagger UI shows an Authorize button and sends
+    the key with Try-it-out requests.
+    """
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        routes=app.routes,
+    )
+    schema.setdefault("components", {}).setdefault("securitySchemes", {})[
+        "ApiKeyAuth"
+    ] = {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+    }
+    schema["security"] = [{"ApiKeyAuth": []}]
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 
 @app.get("/")

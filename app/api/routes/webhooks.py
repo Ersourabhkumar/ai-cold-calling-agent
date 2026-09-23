@@ -14,6 +14,7 @@ from app.models.enums import CallStatus
 from app.services.ai.conversation import process_customer_message
 from app.services.call_lifecycle import transition_call
 from app.services.call_service import get_call
+from app.services.sarvam_webhook_service import process_sarvam_webhook
 from app.services.tabbly_webhook_service import process_tabbly_webhook
 
 logger = logging.getLogger(__name__)
@@ -294,6 +295,119 @@ async def plivo_answer_webhook(
         content=xml,
         media_type="application/xml",
     )
+
+
+@router.post("/plivo/speech")
+async def plivo_speech_webhook(
+    call_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    form_data = await request.form()
+
+    form = {
+        key: str(value)
+        for key, value in form_data.items()
+    }
+
+    _verify_plivo_signature(request, form)
+
+    call = get_call(db, call_id)
+
+    if call is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Call not found",
+        )
+
+    customer_text = (
+        form.get("Speech")
+        or form.get("speech")
+        or ""
+    ).strip()
+
+    public_base_url = os.getenv(
+        "PUBLIC_BASE_URL",
+        "http://localhost:8000",
+    ).rstrip("/")
+
+    speech_url = (
+        f"{public_base_url}/webhooks/plivo/speech"
+        f"?call_id={call_id}"
+    )
+
+    if not customer_text:
+        xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+
+    <Speak language="en-IN">
+        Sorry, I could not understand that. Please try again.
+    </Speak>
+
+    <GetInput
+        action="{speech_url}"
+        method="POST"
+        inputType="speech"
+        executionTimeout="10"
+        speechEndTimeout="2"
+    />
+
+</Response>
+"""
+
+    return Response(
+        content=xml,
+        media_type="application/xml",
+    )
+
+
+@router.post("/sarvam/status")
+async def sarvam_status_webhook(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Handle Sarvam Voice Agent webhook callbacks.
+
+    Verified webhook schema:
+    https://docs.sarvam.ai/conversations/api/instant-outbound/webhook-payload
+
+    Sarvam sends one POST per call attempt with status, transcript,
+    and agent output variables.
+    """
+    raw = await request.body()
+    body: dict | list = {}
+
+    if raw:
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, (dict, list)):
+                body = parsed
+        except (TypeError, ValueError):
+            pass
+
+    if isinstance(body, list):
+        results = []
+        for item in body:
+            if not isinstance(item, dict):
+                continue
+            results.append(process_sarvam_webhook(db, item))
+        return {
+            "success": True,
+            "handled_count": sum(1 for r in results if r.get("handled")),
+            "results": results,
+        }
+
+    result = process_sarvam_webhook(db, body)
+
+    return {
+        "success": result.get("success", False),
+        "handled": result.get("handled", False),
+        "call_id": result.get("call_id"),
+        "status": result.get("status"),
+        "message": result.get("message"),
+        "enriched": result.get("enriched"),
+        "duplicate": result.get("duplicate", False),
+    }
 
 
 @router.post("/plivo/speech")

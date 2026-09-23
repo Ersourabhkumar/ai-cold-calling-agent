@@ -32,11 +32,14 @@ class CallStatusEvent(BaseModel):
 
 
 class CallSimulationRequest(BaseModel):
-    scenario: Literal["conversation", "no_answer", "busy", "failed", "cancelled"] = (
+    scenario: Literal["conversation", "no_answer", "busy", "failed", "cancelled", "sarvam"] = (
         "conversation"
     )
     customer_text: str | None = Field(default=None, min_length=1, max_length=4_000)
     complete: bool = False
+    sarvam_transcript: list[dict] | None = None
+    sarvam_agent_variables: dict | None = None
+    sarvam_duration: int | None = None
 
 
 class CallComplete(BaseModel):

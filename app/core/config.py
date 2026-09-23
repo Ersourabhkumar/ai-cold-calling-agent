@@ -38,8 +38,17 @@ def _check_provider_config(health: ProductionHealth, provider: str) -> None:
         health.errors.append(
             f"CALLING_MODE=production cannot use telephony provider "
             f"{provider!r}. Set TELEPHONY_PROVIDER to a real provider "
-            f"(tabbly, plivo or twilio)."
+            f"(sarvam, tabbly, plivo or twilio)."
         )
+        return
+
+    if provider == "sarvam":
+        for key in ("SARVAM_API_KEY", "SARVAM_ORG_ID", "SARVAM_WORKSPACE_ID", "SARVAM_APP_ID"):
+            if not env(key):
+                health.errors.append(f"{key} is required for provider sarvam")
+        for key in ("SARVAM_CONNECTION_ID", "SARVAM_AGENT_PHONE_NUMBER"):
+            if not env(key):
+                health.warnings.append(f"{key} is not set; sarvam calls will fail")
         return
 
     if provider == "tabbly":

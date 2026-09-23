@@ -5,6 +5,10 @@ import os
 os.environ["DATABASE_URL"] = "sqlite:///./test_cold_calling.db"
 os.environ["CALLING_MODE"] = "mock"
 os.environ["LLM_MODE"] = "test"
+os.environ["RATE_LIMIT_PER_MINUTE"] = "10000"
+# Neutralize any developer .env API_KEY so ApiKeyMiddleware stays open
+# during tests (load_dotenv never overrides an already-set variable).
+os.environ["API_KEY"] = ""
 
 import pytest
 from fastapi.testclient import TestClient

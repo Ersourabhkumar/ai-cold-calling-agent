@@ -26,6 +26,7 @@ from app.services.ai.conversation import add_opening_message, process_customer_m
 from app.services.call_dispatcher import CallDispatchError, dispatch_call
 from app.services.call_lifecycle import transition_call
 from app.services.call_service import create_call, get_call, get_calls, get_lead_calls, update_call
+from app.services.sarvam_webhook_service import process_sarvam_webhook
 from app.services.twilio_webhook_service import process_twilio_webhook
 
 
@@ -220,6 +221,59 @@ def simulate_call_endpoint(
         if data.scenario in terminal_scenarios:
             call, _ = transition_call(db, call, terminal_scenarios[data.scenario])
             return {"call": CallResponse.model_validate(call), "caller_text": None, "qualification": None}
+
+        if data.scenario == "sarvam":
+            if call.status == CallStatus.QUEUED:
+                call = dispatch_call(db, call)
+            if call.status not in {CallStatus.INITIATED, CallStatus.RINGING, CallStatus.ANSWERED, CallStatus.IN_PROGRESS}:
+                raise ValueError(f"Cannot simulate Sarvam flow from status {call.status.value}")
+            default_transcript = [
+                {"role": "agent", "en_text": "Hello, this is the AI assistant calling about your inquiry. Is now a convenient time for a brief conversation?"},
+                {"role": "user", "en_text": "Yes, tell me more."},
+                {"role": "agent", "en_text": "Could you share what type of property you are looking for?"},
+                {"role": "user", "en_text": "I am looking for a 2 BHK apartment in Bangalore."},
+                {"role": "agent", "en_text": "What is your budget range?"},
+                {"role": "user", "en_text": "Around 50 lakh."},
+                {"role": "agent", "en_text": "What is your preferred timeline?"},
+                {"role": "user", "en_text": "Within 3 months."},
+                {"role": "agent", "en_text": "Would you like to schedule a property visit?"},
+                {"role": "user", "en_text": "Yes, please schedule a visit."},
+            ]
+            default_agent_variables = {
+                "property_type": "apartment",
+                "bhk": "2",
+                "location": "Bangalore",
+                "budget": "50 lakh",
+                "budget_amount": 5000000,
+                "timeline": "3 months",
+                "purpose": "self-use",
+                "interested": True,
+                "appointment_requested": True,
+                "qualification_status": "QUALIFIED",
+            }
+            sarvam_payload = {
+                "attempt_id": call.provider_call_id,
+                "status": "connected",
+                "duration": data.sarvam_duration or 120,
+                "interaction_id": f"simulated-int-{call.id}",
+                "failure_reason": None,
+                "final_agent_variables": data.sarvam_agent_variables or default_agent_variables,
+                "interaction_transcript": data.sarvam_transcript or default_transcript,
+                "webhook_config": {"metadata": {"call_id": str(call.id)}},
+            }
+            result = process_sarvam_webhook(db, sarvam_payload)
+            db.refresh(call)
+            summary = None
+            if call.summary:
+                summary = CallSummaryResponse.model_validate(call.summary)
+            return {
+                "success": result.get("success"),
+                "handled": result.get("handled"),
+                "call_id": result.get("call_id"),
+                "call": CallResponse.model_validate(call),
+                "enriched": result.get("enriched"),
+                "summary": summary,
+            }
 
         _ensure_conversation_started(db, call)
         db.refresh(call)
