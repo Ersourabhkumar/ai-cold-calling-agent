@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -27,7 +27,6 @@ from app.services.call_dispatcher import CallDispatchError, dispatch_call
 from app.services.call_lifecycle import transition_call
 from app.services.call_service import create_call, get_call, get_calls, get_lead_calls, update_call
 from app.services.sarvam_webhook_service import process_sarvam_webhook
-from app.services.twilio_webhook_service import process_twilio_webhook
 
 
 router = APIRouter(prefix="/api/calls", tags=["Calls"])
@@ -37,7 +36,7 @@ def _real_provider_configured() -> bool:
     mode = os.getenv("CALLING_MODE", "mock").lower()
     if mode != "production":
         return False
-    provider = os.getenv("TELEPHONY_PROVIDER", "tabbly").lower()
+    provider = os.getenv("TELEPHONY_PROVIDER", "sarvam").lower()
     return provider not in {"mock", "test", "local"}
 
 
@@ -197,7 +196,7 @@ def simulate_call_endpoint(
             detail=(
                 "Simulation is disabled when a real provider is configured "
                 "(CALLING_MODE=production). Use POST /api/calls/{id}/start "
-                "for a real Tabbly call instead."
+                "for a real Sarvam call instead."
             ),
         )
     try:
@@ -346,51 +345,3 @@ def get_call_summary_endpoint(call_id: int, db: Session = Depends(get_db)):
     if summary is None:
         raise HTTPException(status_code=404, detail="Call summary not available")
     return summary
-
-
-@router.post("/webhook")
-async def twilio_status_webhook(request: Request, call_id: int, db: Session = Depends(get_db)):
-    """Backward-compatible Twilio status endpoint; production should use the dedicated webhook URL."""
-    form = await request.form()
-    if os.getenv("CALLING_MODE", "mock").lower() in {"production", "twilio"}:
-        auth_token = os.getenv("TWILIO_AUTH_TOKEN")
-        signature = request.headers.get("X-Twilio-Signature")
-        if not auth_token or not signature:
-            raise HTTPException(status_code=403, detail="Missing Twilio webhook signature")
-        from twilio.request_validator import RequestValidator
-
-        base_url = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
-        expected_url = (
-            f"{base_url}/api/calls/webhook?call_id={call_id}"
-            if base_url
-            else str(request.url)
-        )
-        if not RequestValidator(auth_token).validate(expected_url, dict(form), signature):
-            raise HTTPException(status_code=403, detail="Invalid Twilio webhook signature")
-    call = _require_call(db, call_id)
-    provider_call_id = form.get("CallSid")
-    if provider_call_id and call.provider_call_id and provider_call_id != call.provider_call_id:
-        raise HTTPException(status_code=400, detail="Provider call ID mismatch")
-    try:
-        updated_call = process_twilio_webhook(
-            db,
-            call,
-            str(form.get("CallStatus", "")),
-            form.get("CallDuration"),
-            provider_event_id=(
-                f"{provider_call_id}:{form.get('CallStatus')}:{form.get('CallDuration', '')}"
-                if provider_call_id
-                else None
-            ),
-        )
-        return {"success": True, "call_id": updated_call.id, "status": updated_call.status.value}
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@router.post("/twiml")
-async def twilio_twiml(call_id: int, db: Session = Depends(get_db)):
-    _require_call(db, call_id)
-    xml = """<?xml version="1.0" encoding="UTF-8"?>
-<Response><Say language="en-IN">Hello. This is an automated call. Please wait while we connect you.</Say><Hangup/></Response>"""
-    return Response(content=xml, media_type="application/xml")

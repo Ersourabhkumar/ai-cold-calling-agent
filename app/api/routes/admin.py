@@ -9,10 +9,6 @@ from sqlalchemy.orm import Session
 
 from app.core.phone_validation import mask_phone, validate_phone
 from app.database.connection import get_db
-from app.services.call_log_sync import (
-    CallLogSyncError,
-    sync_tabby_call_logs,
-)
 from app.models.call import Call
 from app.models.call_summary import CallSummary
 from app.models.campaign import Campaign
@@ -21,8 +17,6 @@ from app.models.enums import CampaignStatus
 from app.models.lead import Lead
 from app.services.call_dispatcher import CallDispatchError, dispatch_call
 from app.services.call_service import create_call
-from app.services.calling import get_calling_provider
-from app.services.calling.tabbly_provider import TabblyCallingProvider
 from app.schemas.admin import TestCallRequest, TestCallStatusRequest
 from app.schemas.call import CallCreate
 
@@ -31,81 +25,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
 
-@router.post("/sync/tabbly-call-logs")
-def sync_tabby_call_logs_endpoint(
-    limit: int = 50,
-    db: Session = Depends(get_db),
-):
-    """Manually reconcile local calls with recent Tabbly call logs.
-
-    Requires TELEPHONY_PROVIDER=tabbly and TABBLY_ORGANIZATION_ID. This is the
-    poll-based fallback when status webhooks cannot reach a public URL.
-    """
-    try:
-        return sync_tabby_call_logs(db, limit=limit)
-    except CallLogSyncError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    except Exception as exc:
-        logger.exception("Tabbly call-log sync endpoint failed")
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-
-
-@router.post("/tabbly/campaigns/{call_id}/activate")
-def re_activate_tabby_campaign(
-    call_id: int,
-    db: Session = Depends(get_db),
-):
-    """Re-activate and extend the Tabbly campaign backing a call.
-
-    Use this when a call was dispatched but never dialled because the Tabbly
-    scheduler did not run within the original window. Requires
-    TABBLY_ORGANIZATION_ID.
-    """
-    call = db.get(Call, call_id)
-    if call is None:
-        raise HTTPException(status_code=404, detail="Call not found")
-
-    if not call.provider_call_id:
-        raise HTTPException(
-            status_code=409,
-            detail="Call has no Tabbly campaign (provider_call_id is empty)",
-        )
-
-    provider = get_calling_provider()
-    if not isinstance(provider, TabblyCallingProvider):
-        raise HTTPException(
-            status_code=409,
-            detail="Tabbly re-activation requires TELEPHONY_PROVIDER=tabbly",
-        )
-
-    ok = provider.ensure_campaign_active(call.provider_call_id)
-    if not ok:
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                "Could not re-activate the Tabbly campaign. Ensure "
-                "TABBLY_ORGANIZATION_ID is set and the campaign still exists."
-            ),
-        )
-
-    return {
-        "success": True,
-        "call_id": call.id,
-        "provider_call_id": call.provider_call_id,
-        "message": (
-            "Campaign re-activated. The Tabbly scheduler (or a dashboard "
-            "Run action) will dial the contact within the new window."
-        ),
-    }
-
-
 def _public_diagnostics(call: Call, detail: str | None = None) -> dict:
     """Render a diagnostic map without leaking secrets or full numbers."""
     tabs = {
         "Provider": call.provider or "unknown",
         "Internal Call ID": call.id,
         "Campaign ID": call.campaign_id,
-        "Agent ID": os.getenv("TABBLY_AGENT_ID") or os.getenv("TABLLY_AGENT_ID") or "not set",
+        "Agent Phone": os.getenv("SARVAM_AGENT_PHONE_NUMBER", "not set"),
         "Provider Call ID": call.provider_call_id or "none",
         "Provider Status": call.status.value if call.status else "none",
         "Destination": mask_phone(call.phone_number),
@@ -229,25 +155,13 @@ def test_call_status(
     call_id: int,
     db: Session = Depends(get_db),
 ):
-    """Return live call diagnostics; optionally reconcile Tabbly logs.
+    """Return live call diagnostics for a dispatched test call.
 
-    Requires call_id. When TABBLY_ORGANIZATION_ID is configured, this also
-    polls Tabbly call-logs-v2 and applies any terminal status/transcript.
+    Requires call_id as a query parameter.
     """
     call = db.get(Call, call_id)
     if call is None:
         raise HTTPException(status_code=404, detail="Call not found")
-
-    sync_result = None
-    organization_id = os.getenv("TABBLY_ORGANIZATION_ID") or os.getenv(
-        "TABLLY_ORGANIZATION_ID"
-    )
-    if organization_id:
-        try:
-            sync_result = sync_tabby_call_logs(db, limit=50)
-            db.refresh(call)
-        except Exception as exc:
-            sync_result = {"error": str(exc)[:300]}
 
     summary = db.scalar(
         select(CallSummary).where(CallSummary.call_id == call.id)
@@ -277,6 +191,5 @@ def test_call_status(
             "timeline": call.lead.timeline if call.lead else None,
         },
         "qualification": outcome,
-        "tabbly_sync": sync_result,
         "diagnostics": _public_diagnostics(call),
     }

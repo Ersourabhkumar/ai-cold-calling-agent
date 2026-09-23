@@ -27,7 +27,12 @@ def _is_open_path(path: str) -> bool:
 
 
 class ApiKeyMiddleware(BaseHTTPMiddleware):
-    """Require an API key for /api routes when API_KEY is configured."""
+    """Require an API key for /api and /ui/api routes when API_KEY is set.
+
+    Browser UI pages (GET /ui/*) stay open; the JSON action endpoints
+    (/ui/api/*) that create leads or dispatch live calls require the key,
+    exactly like /api/*. The UI sends it as X-API-Key from localStorage.
+    """
 
     async def dispatch(
         self,
@@ -36,7 +41,10 @@ class ApiKeyMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         api_key = env("API_KEY")
 
-        if api_key and request.url.path.startswith("/api/"):
+        path = request.url.path
+        if api_key and (
+            path.startswith("/api/") or path.startswith("/ui/api")
+        ):
             presented = request.headers.get("X-API-Key", "")
             if not presented or not hmac.compare_digest(presented, api_key):
                 return Response(

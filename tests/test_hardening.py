@@ -5,19 +5,25 @@ def test_validate_production_config_rejects_sqlite_and_mock(monkeypatch):
     import app.core.config as cfg
 
     monkeypatch.setenv("CALLING_MODE", "production")
-    monkeypatch.setenv("TELEPHONY_PROVIDER", "tabbly")
+    monkeypatch.setenv("TELEPHONY_PROVIDER", "sarvam")
     monkeypatch.setenv(
         "DATABASE_URL",
         "sqlite:///./test.db",
     )
-    monkeypatch.delenv("TABBLY_API_KEY", raising=False)
+    for key in (
+        "SARVAM_API_KEY",
+        "SARVAM_ORG_ID",
+        "SARVAM_WORKSPACE_ID",
+        "SARVAM_APP_ID",
+    ):
+        monkeypatch.delenv(key, raising=False)
 
     health = cfg.validate_production_config()
 
     assert health.ok is False
     joined = " ".join(health.errors).lower()
     assert "sqlite" in joined
-    assert "tabbly_api_key" in joined
+    assert "sarvam_api_key" in joined
 
 
 def test_validate_production_config_ok_for_mock(monkeypatch):

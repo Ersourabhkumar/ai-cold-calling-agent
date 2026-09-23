@@ -15,8 +15,6 @@ celery_app = Celery(
     backend=REDIS_URL,
     include=[
         "app.workers.followup_worker",
-        "app.workers.call_worker",
-        "app.workers.tabby_sync_worker",
     ],
 )
 
@@ -45,12 +43,6 @@ celery_app.conf.update(
         "app.workers.followup_worker.*": {
             "queue": "calling",
         },
-        "app.workers.call_worker.*": {
-            "queue": "calling",
-        },
-        "app.workers.tabby_sync_worker.*": {
-            "queue": "calling",
-        },
     },
 
     beat_schedule={
@@ -60,13 +52,6 @@ celery_app.conf.update(
                 "process_pending_followups"
             ),
             "schedule": 30.0,
-        },
-        "sync-tabby-call-logs": {
-            "task": (
-                "app.workers.tabby_sync_worker."
-                "sync_tabby_call_logs"
-            ),
-            "schedule": 60.0,
         },
     },
 )

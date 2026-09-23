@@ -127,6 +127,7 @@
   <a href="/ui/followups" class="{{ 'active' if active=='followups' else '' }}">📅 <span class="t">Follow-ups</span></a>
   <a href="/ui/new-call" class="{{ 'active' if active=='newcall' else '' }}">🚀 <span class="t">Fire Live Call</span></a>
   <div class="spacer"></div>
+  <div style="padding:0 8px 8px"><input id="apiKeyInput" type="password" placeholder="API key" title="X-API-Key for UI actions (saved in this browser)" style="width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:9px 12px;font-size:13px;outline:none"></div>
   <a href="/docs" target="_blank" class="">🧪 <span class="t">API Docs</span></a>
   <a href="/health" target="_blank" class="">💚 <span class="t">Health</span></a>
 </aside>
@@ -147,6 +148,14 @@ function toast(msg, ok=true){
   t.textContent=msg; t.className='toast show '+(ok?'ok':'err');
   setTimeout(()=>t.classList.remove('show'), 3200);
 }
+function apiKey(){ return localStorage.getItem('cc_api_key')||''; }
+async function apiPost(url,data){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':apiKey()},body:JSON.stringify(data||{})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error((j.detail&&j.detail.message)||j.detail||('HTTP '+r.status));
+  return j;
+}
+(function(){ const k=document.getElementById('apiKeyInput'); if(!k) return; k.value=apiKey(); k.addEventListener('change',()=>{ localStorage.setItem('cc_api_key',k.value.trim()); toast('API key saved'); }); })();
 </script>
 {% block scripts %}{% endblock %}
 </body>

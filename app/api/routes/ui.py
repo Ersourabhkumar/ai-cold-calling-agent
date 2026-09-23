@@ -2,9 +2,8 @@
 
 Lets the operator drive the whole system from the browser instead of curl:
 view dashboard / leads / calls / follow-ups, add CRM leads, and fire + watch a
-live Tabbly call. All pages are open (no API key needed) so the UI is easy to
-demo and share; the underlying /api/admin and /api/* JSON endpoints still
-respect the API_KEY auth when it is configured.
+live Sarvam call. The JSON action endpoints (/ui/api/*) require the API key
+via X-API-Key (stored in the browser), exactly like /api/*.
 """
 
 from __future__ import annotations
@@ -287,17 +286,6 @@ def ui_call_status(call_id: int, db: Session = Depends(get_db)):
     call = db.get(Call, call_id)
     if call is None:
         raise HTTPException(status_code=404, detail="Call not found")
-
-    from app.services.call_log_sync import sync_tabby_call_logs
-    import os
-
-    sync_result = None
-    if os.getenv("TABBLY_ORGANIZATION_ID") or os.getenv("TABLLY_ORGANIZATION_ID"):
-        try:
-            sync_result = sync_tabby_call_logs(db, limit=50)
-            db.refresh(call)
-        except Exception as exc:
-            sync_result = {"error": str(exc)[:200]}
 
     summary = db.scalar(select(CallSummary).where(CallSummary.call_id == call.id))
     return {

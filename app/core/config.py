@@ -38,7 +38,7 @@ def _check_provider_config(health: ProductionHealth, provider: str) -> None:
         health.errors.append(
             f"CALLING_MODE=production cannot use telephony provider "
             f"{provider!r}. Set TELEPHONY_PROVIDER to a real provider "
-            f"(sarvam, tabbly, plivo or twilio)."
+            f"(sarvam)."
         )
         return
 
@@ -49,42 +49,6 @@ def _check_provider_config(health: ProductionHealth, provider: str) -> None:
         for key in ("SARVAM_CONNECTION_ID", "SARVAM_AGENT_PHONE_NUMBER"):
             if not env(key):
                 health.warnings.append(f"{key} is not set; sarvam calls will fail")
-        return
-
-    if provider == "tabbly":
-        if not env("TABBLY_API_KEY"):
-            health.errors.append("TABBLY_API_KEY is required for provider tabbly")
-        if not env("TABBLY_AGENT_ID") and not env("TABLLY_AGENT_ID"):
-            health.errors.append(
-                "TABBLY_AGENT_ID is required for provider tabbly"
-            )
-        if not env("TABBLY_PHONE_NUMBER") and not env("TABLLY_PHONE_NUMBER"):
-            health.warnings.append(
-                "TABBLY_PHONE_NUMBER is not set; the provider will not be "
-                "able to verify the configured agent phone."
-            )
-        if not env("TABBLY_ORGANIZATION_ID"):
-            health.warnings.append(
-                "TABBLY_ORGANIZATION_ID is not set; call-log reconciliation "
-                "and status sync will not work until it is configured."
-            )
-        if not env("TABBLY_WEBHOOK_SECRET"):
-            health.warnings.append(
-                "TABBLY_WEBHOOK_SECRET is not set; status webhooks will be "
-                "accepted without signature validation."
-            )
-        return
-
-    if provider == "twilio":
-        for key in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"):
-            if not env(key):
-                health.errors.append(f"{key} is required for provider twilio")
-        return
-
-    if provider == "plivo":
-        for key in ("PLIVO_AUTH_ID", "PLIVO_AUTH_TOKEN", "PLIVO_PHONE_NUMBER"):
-            if not env(key):
-                health.errors.append(f"{key} is required for provider plivo")
         return
 
     health.errors.append(f"Unknown TELEPHONY_PROVIDER {provider!r}")
@@ -99,7 +63,7 @@ def validate_production_config() -> ProductionHealth:
     health = ProductionHealth()
 
     if is_production():
-        _check_provider_config(health, env("TELEPHONY_PROVIDER", "tabbly") or "tabbly")
+        _check_provider_config(health, env("TELEPHONY_PROVIDER", "sarvam") or "sarvam")
 
         database_url = env("DATABASE_URL", "") or ""
         if database_url.lower().startswith("sqlite"):

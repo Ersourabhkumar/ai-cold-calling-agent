@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI):
     _run_startup_checks()
     logger.info("application started (mode=%s, provider=%s)",
                 is_production() and "production" or "development",
-                os.getenv("TELEPHONY_PROVIDER", "tabbly"))
+                os.getenv("TELEPHONY_PROVIDER", "sarvam"))
     yield
     logger.info("application shutting down")
 

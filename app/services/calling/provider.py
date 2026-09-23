@@ -28,7 +28,7 @@ class CallingProvider(ABC):
     Abstract interface for all telephony providers.
 
     Production code should depend on this interface,
-    not directly on Twilio.
+    not directly on any single provider.
     """
 
     @abstractmethod
