@@ -83,3 +83,30 @@ def test_calls_page_shows_interest_column(client):
     r = client.get("/ui/calls")
     assert r.status_code == 200
     assert "Interest" in r.text
+
+
+def test_interest_label_counts_appointment_as_interested():
+    from app.api.routes.ui import _interest_label
+    from app.models.call import Call
+    from app.models.call_summary import CallSummary
+
+    booked = Call(id=1, lead_id=1, phone_number="+911234567890")
+    booked.summary = CallSummary(
+        call_id=1,
+        summary="",
+        customer_intent="interested",
+        qualification={"interested": False, "appointment_requested": True},
+    )
+    assert _interest_label(booked) == "yes"
+
+    declined = Call(id=2, lead_id=1, phone_number="+911234567890")
+    declined.summary = CallSummary(
+        call_id=2,
+        summary="",
+        customer_intent="unknown",
+        qualification={"interested": False},
+    )
+    assert _interest_label(declined) == "no"
+
+    pending = Call(id=3, lead_id=1, phone_number="+911234567890")
+    assert _interest_label(pending) == "unknown"

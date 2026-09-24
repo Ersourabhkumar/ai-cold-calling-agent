@@ -76,15 +76,21 @@ def _call_flag(c: Call, key: str) -> bool:
     return (c.summary.qualification or {}).get(key) is True
 
 
+def _is_interested(c: Call) -> bool:
+    if c.summary is None:
+        return False
+    qualification = c.summary.qualification or {}
+    if qualification.get("interested") is True:
+        return True
+    if qualification.get("appointment_requested") is True:
+        return True
+    return (c.summary.customer_intent or "").lower() == "interested"
+
+
 def _interest_label(c: Call) -> str:
     if c.summary is None:
         return "unknown"
-    value = (c.summary.qualification or {}).get("interested")
-    if value is True:
-        return "yes"
-    if value is False:
-        return "no"
-    return "unknown"
+    return "yes" if _is_interested(c) else "no"
 
 
 def _serialize_call(c: Call) -> dict:
@@ -108,7 +114,7 @@ def _serialize_call(c: Call) -> dict:
 
 def _draw_summary_stats(db: Session, leads: list[Lead], calls: list[Call], followups: list[Followup], campaigns: list[Campaign]) -> dict:
     qualified = sum(1 for l in leads if l.status and l.status.name == "QUALIFIED")
-    interested_leads = {c.lead_id for c in calls if c.lead_id and _call_flag(c, "interested")}
+    interested_leads = {c.lead_id for c in calls if c.lead_id and _is_interested(c)}
     site_visit_leads = {c.lead_id for c in calls if c.lead_id and _call_flag(c, "appointment_requested")}
     answered = sum(1 for c in calls if c.status and c.status.name in {"ANSWERED", "IN_PROGRESS", "COMPLETED"}
                    and c.duration_seconds)
