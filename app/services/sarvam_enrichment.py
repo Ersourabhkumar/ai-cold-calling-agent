@@ -323,6 +323,16 @@ def apply_sarvam_enrichment(
     db.commit()
     db.refresh(call)
 
+    try:
+        from app.services.crm import sync_call_to_crm
+
+        sync_call_to_crm(db, call.id)
+    except Exception:
+        logger.exception(
+            "CRM sync failed for call %s; skipping.",
+            call.id,
+        )
+
     return {
         "enriched": True,
         "call_id": call.id,

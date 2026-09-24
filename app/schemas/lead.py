@@ -48,3 +48,15 @@ class LeadResponse(BaseModel):
     next_call_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+
+class LeadImportError(BaseModel):
+    row: int
+    error: str
+
+
+class LeadImportResponse(BaseModel):
+    total: int
+    created: int
+    created_ids: list[int] = []
+    failed: list[LeadImportError] = []

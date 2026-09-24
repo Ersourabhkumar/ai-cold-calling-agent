@@ -51,6 +51,24 @@ def validate_phone(phone: str) -> PhoneValidation:
             ),
         )
 
+    digits = original[1:]
+    if digits.startswith("91"):
+        national = digits[2:]
+        if len(national) == 10 and national[0] in "6789":
+            return PhoneValidation(
+                original=original,
+                valid=True,
+                normalized=original,
+            )
+        return PhoneValidation(
+            original=original,
+            valid=False,
+            reason=(
+                "Invalid Indian mobile number; use +91 followed by exactly "
+                "10 digits starting with 6-9 (e.g. +917665035514)."
+            ),
+        )
+
     return PhoneValidation(
         original=original,
         valid=True,

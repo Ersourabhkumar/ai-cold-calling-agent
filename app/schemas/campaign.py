@@ -52,3 +52,26 @@ class CampaignResponse(BaseModel):
     calling_end_time: time | None
     created_at: datetime
     updated_at: datetime
+
+
+class CampaignDispatchRequest(BaseModel):
+    """Bulk-dispatch a campaign. dry_run=True (default) only previews."""
+
+    max_calls: int | None = Field(default=50, ge=1, le=500)
+    dry_run: bool = True
+
+
+class DispatchLeadResult(BaseModel):
+    lead_id: int
+    call_id: int | None = None
+    status: str | None = None
+    reason: str | None = None
+
+
+class CampaignDispatchResponse(BaseModel):
+    campaign_id: int
+    dry_run: bool
+    eligible: int
+    dispatched: list[DispatchLeadResult] = []
+    skipped: list[DispatchLeadResult] = []
+    failed: list[DispatchLeadResult] = []

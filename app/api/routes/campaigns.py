@@ -4,9 +4,12 @@ from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.schemas.campaign import (
     CampaignCreate,
+    CampaignDispatchRequest,
+    CampaignDispatchResponse,
     CampaignResponse,
     CampaignUpdate,
 )
+from app.services.campaign_dispatch import dispatch_campaign
 from app.services.campaign_service import (
     create_campaign,
     delete_campaign,
@@ -110,3 +113,37 @@ def delete_campaign_endpoint(
         )
 
     delete_campaign(db, campaign)
+
+
+@router.post(
+    "/{campaign_id}/dispatch",
+    response_model=CampaignDispatchResponse,
+)
+def dispatch_campaign_endpoint(
+    campaign_id: int,
+    data: CampaignDispatchRequest,
+    db: Session = Depends(get_db),
+):
+    """Bulk-dispatch pending leads of a campaign.
+
+    dry_run=True (default) only previews eligibility without creating
+    anything. Set dry_run=false with max_calls to actually dial.
+    """
+    try:
+        return dispatch_campaign(
+            db,
+            campaign_id,
+            max_calls=data.max_calls,
+            dry_run=data.dry_run,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        if "not found" in message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=message,
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=message,
+        ) from exc

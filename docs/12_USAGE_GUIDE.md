@@ -160,3 +160,53 @@ Ye dono chalu rahenge to callback followups apne time par process honge.
 ## 11. Baad me (jab bologe)
 
 Hosting + domain → production hardening confirm → CRM plug-in (sir permission ke baad) → full login system.
+
+---
+
+## 12. Bulk calling (zyada leads ek saath)
+
+Ek-ek karke nahi — campaign banao, leads assign karo, ek command me sab dial karo:
+
+1. Campaign banao: Swagger → Campaigns → `POST /api/campaigns` (naam + `max_attempts`, jaise 3). **Note: campaign ACTIVE karni padegi** — `PATCH /api/campaigns/{id}` me `{"status": "ACTIVE"}` bhejo (nayi campaigns active nahi hoti — accidental dial protection).
+2. Leads assign karo: `POST /api/campaigns/{campaign_id}/leads/{lead_id}` (ek-ek karke, ya CSV se neeche Section 13).
+3. **Pehle DRY RUN (bina dial kiye preview):** `POST /api/campaigns/{id}/dispatch` body `{"dry_run": true}` → `eligible` count + `skipped` (DND / max-attempts) dekho. **Kuch create nahi hota — 100% safe.**
+4. Live dial: same endpoint body `{"dry_run": false, "max_calls": 50}` → ek-ek karke dial hoga; har lead ka result (`dispatched` / `failed` / `skipped`) response me.
+5. Progress: `/ui/calls` page ya `GET /api/calls` par dekho.
+6. Rules: DND leads auto-skip, max attempts wale skip, inactive campaign par 409. `max_calls` cap kharcha control karta hai (default 50, max 500).
+
+## 13. CSV se leads lao (Excel se)
+
+1. CSV banao — header row zaroori: `name,phone` + optional `email,city,source,requirement,budget,timeline`. Example:
+```
+name,phone,city,requirement,budget,timeline
+Asha Sharma,+919000000041,Jaipur,2 BHK,50 lakh,3 months
+```
+2. Swagger → Leads → `POST /api/leads/import` → file upload karo.
+3. Response: `created` count + `failed` rows (kaunsi row, kyun — jaise galat phone).
+4. Phone rule: **+91 ke baad exactly 10 digits (6-9 se shuru)** — galat number file me hi reject, Sarvam tak jayega hi nahi.
+
+## 14. CRM connect karna (jab sir permission de)
+
+**Abhi kuch karne ki zaroorat nahi** — system CRM-ready hai (`CRM_PROVIDER=none` = sab local, zero external call).
+
+Jab permission mile, 2 tareeke (koi code change nahi):
+
+**Tareeka A — Webhook (koi bhi CRM: Zoho/HubSpot/custom/Sheets):**
+1. Apne CRM me incoming webhook URL banao (JSON accept karne wala).
+2. `.env` me dalo:
+```
+CRM_PROVIDER=webhook
+CRM_WEBHOOK_URL=https://tumhara-crm/webhook-url
+```
+3. App restart. Bas! Ab har **completed call** par ye JSON jayega:
+```json
+{"event": "call.completed", "call_id": 12, "lead_id": 5,
+ "lead": {"name": "...", "phone": "+91..."},
+ "outcome": "APPOINTMENT_BOOKED", "duration_seconds": 80,
+ "recording_url": "...", "qualification": {...}}
+```
+4. CRM side mapping karo: `lead.phone` se lead match → `outcome` se status → `qualification` se fields (budget/timeline/city/appointment_day/time).
+
+**Tareeka B — Native connector (baad me):** `app/services/crm/` me naya provider file (base class ready hai) — jab specific CRM (Salesforce wagera) ka API use karna ho.
+
+Note: abhi sirf **completed** calls sync hoti hain (busy/no-answer webhook sync follow-up me aayega). CRM fail hua to call flow **kabhi nahi rukega** (best-effort + logged).
